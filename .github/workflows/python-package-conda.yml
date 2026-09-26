@@ -39,4 +39,4 @@ jobs:
 
       - name: Tests
         run: |
-          PYTHONPATH="$PWD/backend" python -m pytest -v backend/tests
+          pytest
