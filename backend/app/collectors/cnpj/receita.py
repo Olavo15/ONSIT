@@ -168,41 +168,18 @@ class ReceitaFederalCollector(BaseCollector):
                 except Exception:
                     continue
 
-        # Rich Fallback if external Receita API is unreachable
+        # Nenhuma das APIs abertas de CNPJ respondeu: nunca inventar dados da empresa
         formatted_cnpj = f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
         results.append(CollectorResult(
-            field="Razão Social",
-            value="EMPRESA EXEMPLO SERVICOS E TECNOLOGIA LTDA",
+            field="Consulta de Dados Cadastrais (CNPJ)",
+            value=(
+                "Não verificado: as fontes abertas de CNPJ (BrasilAPI, minhareceita.org, "
+                "cnpj.ws) não responderam nesta consulta. Tente novamente mais tarde."
+            ),
             source_name=self.name,
             source_reference=f"CNPJ-{formatted_cnpj}",
-            confidence=0.9,
-            verification_status=VerificationStatus.SOURCE_CONFIRMED,
-            display_policy=DisplayPolicy.FULL
-        ))
-        results.append(CollectorResult(
-            field="Situação Cadastral",
-            value="ATIVA",
-            source_name=self.name,
-            source_reference=f"CNPJ-{formatted_cnpj}",
-            confidence=0.9,
-            verification_status=VerificationStatus.SOURCE_CONFIRMED,
-            display_policy=DisplayPolicy.FULL
-        ))
-        results.append(CollectorResult(
-            field="Quadro de Sócios e Administradores (QSA)",
-            value="JOAO DA SILVA (Sócio-Administrador) | MARIA SOUZA (Sócio)",
-            source_name=self.name,
-            source_reference=f"QSA-{formatted_cnpj}",
-            confidence=0.9,
-            verification_status=VerificationStatus.SOURCE_CONFIRMED,
-            display_policy=DisplayPolicy.FULL
-        ))
-        results.append(CollectorResult(
-            field="Endereço Empresarial Publicado",
-            value="AV PAULISTA, 1000 - BELA VISTA, SÃO PAULO/SP",
-            source_name=self.name,
-            confidence=0.9,
-            verification_status=VerificationStatus.SOURCE_CONFIRMED,
+            confidence=0.0,
+            verification_status=VerificationStatus.UNVERIFIED,
             display_policy=DisplayPolicy.FULL
         ))
         return results

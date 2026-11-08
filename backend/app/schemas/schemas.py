@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional, Any, Dict
 from datetime import datetime
 from app.models.models import IndicatorType, DisplayPolicy, VerificationStatus, SourceType, InvestigationStatus
@@ -77,7 +77,6 @@ class ComplaintResponse(BaseModel):
 class InvestigationCreate(BaseModel):
     title: Optional[str] = None
     subject_name: Optional[str] = None # Nome real do titular (opcional)
-    api_key: Optional[str] = None # Chave de API do provedor (opcional)
     indicators: List[IndicatorCreate]
 
 class InvestigationResponse(BaseModel):

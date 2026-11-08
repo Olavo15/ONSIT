@@ -1,4 +1,3 @@
-import asyncio
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
@@ -47,8 +46,7 @@ async def create_investigation(
         InvestigationService.run_investigation,
         db,
         inv.id,
-        data.subject_name,
-        data.api_key
+        data.subject_name
     )
 
     return inv

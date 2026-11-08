@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Shield, Search, Network, AlertTriangle, FileText, Database, 
-  CheckCircle2, Clock, Eye, EyeOff, Lock, User, Phone, Mail, 
-  Building2, Globe, Cpu, Hash, Share2, Download, AlertOctagon,
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Shield, Search, Network, AlertTriangle, FileText, Database,
+  CheckCircle2, User, Phone, Mail,
+  Building2, Globe, Cpu, Hash, Download,
   ExternalLink, Layers, RefreshCw
 } from 'lucide-react';
 
@@ -23,6 +23,20 @@ export default function App() {
   const [complaints, setComplaints] = useState([]);
   const [reportText, setReportText] = useState('');
 
+  // Tracks which investigation is currently being polled, and the pending poll timer,
+  // so a stale poll chain (unmounted component or a newer investigation started) can be cancelled.
+  const activeInvestigationIdRef = useRef(null);
+  const pollTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      activeInvestigationIdRef.current = null;
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Complaint Form State
   const [newComplaint, setNewComplaint] = useState({
     indicator_type: 'PHONE',
@@ -30,6 +44,19 @@ export default function App() {
     report_type: 'SUSPECTED_SCAM',
     description: ''
   });
+
+  const statusLabels = {
+    PENDING: 'PENDENTE',
+    PROCESSING: 'EM PROCESSAMENTO',
+    COMPLETED: 'CONCLUÍDO',
+    FAILED: 'FALHOU'
+  };
+  const statusColors = {
+    PENDING: 'var(--text-muted)',
+    PROCESSING: 'var(--accent-amber)',
+    COMPLETED: 'var(--accent-emerald)',
+    FAILED: '#ef4444'
+  };
 
   const indicatorOptions = [
     { type: 'CPF', label: 'CPF', icon: User, placeholder: '000.000.000-00' },
@@ -110,6 +137,12 @@ export default function App() {
     e.preventDefault();
     if (!indicatorValue.trim()) return;
 
+    // Cancel any poll chain still running for a previous investigation
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+
     setIsProcessing(true);
     setProgress(15);
 
@@ -126,41 +159,45 @@ export default function App() {
       });
       const data = await res.json();
       setCurrentInvestigation(data);
+      activeInvestigationIdRef.current = data.id;
 
-      // Simulate step progress while server processes
-      let currentProgress = 30;
-      const interval = setInterval(async () => {
-        currentProgress += 20;
-        if (currentProgress >= 90) {
-          clearInterval(interval);
-          
-          // Fetch completed investigation
-          const invRes = await fetch(`${API_BASE_URL}/investigations/${data.id}`);
-          const invData = await invRes.json();
-          setCurrentInvestigation(invData);
+      // Poll the real investigation status until the backend actually finishes.
+      // Bails out if this investigation is no longer the active one (component
+      // unmounted or a newer investigation was started in the meantime).
+      const pollStatus = async () => {
+        if (activeInvestigationIdRef.current !== data.id) return;
 
-          // Fetch findings
-          const findRes = await fetch(`${API_BASE_URL}/investigations/${data.id}/findings`);
-          const findData = await findRes.json();
+        const invRes = await fetch(`${API_BASE_URL}/investigations/${data.id}`);
+        const invData = await invRes.json();
+
+        if (activeInvestigationIdRef.current !== data.id) return;
+        setCurrentInvestigation(invData);
+        setProgress(invData.progress ?? 0);
+
+        if (invData.status === 'COMPLETED' || invData.status === 'FAILED') {
+          const [findRes, graphRes, repRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/investigations/${data.id}/findings`),
+            fetch(`${API_BASE_URL}/investigations/${data.id}/graph`),
+            fetch(`${API_BASE_URL}/reports/${data.id}?format=TXT`)
+          ]);
+          const [findData, graphDataJson, repData] = await Promise.all([
+            findRes.json(), graphRes.json(), repRes.json()
+          ]);
+
+          if (activeInvestigationIdRef.current !== data.id) return;
           setFindings(findData);
-
-          // Fetch graph
-          const graphRes = await fetch(`${API_BASE_URL}/investigations/${data.id}/graph`);
-          const graphDataJson = await graphRes.json();
           setGraphData(graphDataJson);
-
-          // Fetch report
-          const repRes = await fetch(`${API_BASE_URL}/reports/${data.id}?format=TXT`);
-          const repData = await repRes.json();
           setReportText(repData.content);
 
           setProgress(100);
           setIsProcessing(false);
           setActiveTab('findings');
         } else {
-          setProgress(currentProgress);
+          pollTimeoutRef.current = setTimeout(pollStatus, 1000);
         }
-      }, 600);
+      };
+
+      pollTimeoutRef.current = setTimeout(pollStatus, 500);
 
     } catch (err) {
       console.error(err);
@@ -386,7 +423,7 @@ export default function App() {
                   Evidências Coletadas ({findings.length})
                 </h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  {currentInvestigation?.title} | Status: <span style={{ color: 'var(--accent-emerald)' }}>CONCLUÍDO</span>
+                  {currentInvestigation?.title} | Status: <span style={{ color: statusColors[currentInvestigation?.status] || 'var(--text-muted)' }}>{statusLabels[currentInvestigation?.status] || currentInvestigation?.status}</span>
                 </p>
               </div>
               <button onClick={() => setActiveTab('graph')} className="glow-btn" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>

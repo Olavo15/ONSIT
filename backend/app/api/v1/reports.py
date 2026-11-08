@@ -111,7 +111,7 @@ def get_or_generate_report(
         lines.append("EXPOSIÇÃO DE E-MAIL")
         for f in breach_findings:
             lines.append(f"{f.field}: {f.value}")
-            lines.append(f"Fonte: {f.source_name}\n")
+            lines.append(f"Fonte: {f.source_name} | Verificação: {f.verification_status.value}\n")
 
     lines.append("EVIDÊNCIAS & DADOS DE REGISTRO")
     for f in outros:
@@ -154,7 +154,13 @@ def get_or_generate_report(
                 for t in SECTION_ORDER if entities_by_type.get(t)
             },
             "exposicao_email": [
-                {"field": f.field, "value": f.value, "source": f.source_name} for f in breach_findings
+                {
+                    "field": f.field,
+                    "value": f.value,
+                    "source": f.source_name,
+                    "confidence": f.confidence,
+                    "verification": f.verification_status.value
+                } for f in breach_findings
             ],
             "grafo": {
                 "nodes": [{"id": e.id, "name": e.name, "entity_type": e.entity_type} for e in entities],

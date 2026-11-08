@@ -1,5 +1,4 @@
 import re
-import httpx
 from typing import List
 from app.collectors.base import BaseCollector, CollectorResult
 from app.models.models import IndicatorType, DisplayPolicy, VerificationStatus
@@ -50,25 +49,15 @@ class CPFCollector(BaseCollector):
             display_policy=DisplayPolicy.FULL
         ))
 
-        # 3. Status Cadastral
-        results.append(CollectorResult(
-            field="Situação Cadastral na Receita Federal",
-            value="REGULAR" if is_valid_dv else "PENDENTE DE REGULARIZAÇÃO",
-            source_name=self.name,
-            source_reference=f"RFB-CPF-{cpf}",
-            confidence=0.95,
-            verification_status=VerificationStatus.SOURCE_CONFIRMED,
-            display_policy=DisplayPolicy.FULL
-        ))
-
-        # 4. Status de Consulta à Base Pública
+        # 2. Status de Consulta à Base Pública — aviso procedural, não um dado
+        # confirmado sobre o titular, então não leva confidence/SOURCE_CONFIRMED.
         results.append(CollectorResult(
             field="Status da Consulta Registral",
-            value="Validação de documento público efetuada com sucesso. Para dados nominais completos de CPF por APIs restritas, insira a credencial autorizada no menu Catálogo de Fontes.",
+            value="Validação estrutural efetuada com sucesso. Dados nominais completos (nome, endereço) não são obtidos via token/API: são dado pessoal protegido pela LGPD, só acessível por declaração do investigador (campo 'Nome do titular') ou por contrato comercial com um birô de crédito autorizado (ex: Serasa, Boa Vista, Big Data Corp).",
             source_name=self.name,
             source_reference=f"CPF-{formatted_cpf}",
-            confidence=1.0,
-            verification_status=VerificationStatus.SOURCE_CONFIRMED,
+            confidence=0.0,
+            verification_status=VerificationStatus.UNVERIFIED,
             display_policy=DisplayPolicy.FULL
         ))
 

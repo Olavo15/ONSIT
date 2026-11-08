@@ -1,6 +1,4 @@
-import re
 from typing import List, Dict
-from app.models.models import Entity, Relationship, IndicatorType
 
 # Marcadores usados para classificar cada Finding num tipo de entidade do
 # grafo (Seção 18 da arquitetura). Mapeados nos nomes de campo reais que os
@@ -67,6 +65,12 @@ class EntityResolutionEngine:
             val = (finding.get("value") or "").strip()
             entity_type = EntityResolutionEngine._classify(field)
             if not entity_type or not val:
+                continue
+            # confidence == 0.0 is how collectors mark "não verificado" (see
+            # VerificationStatus.UNVERIFIED) — checked structurally, not just
+            # by sniffing the value text, so a future wording change can't
+            # smuggle an unverified placeholder into the graph as a real node.
+            if finding.get("confidence", 1.0) <= 0.0:
                 continue
             if any(marker in val.lower() for marker in NEGATIVE_MARKERS):
                 continue
